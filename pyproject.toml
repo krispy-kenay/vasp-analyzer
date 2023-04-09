@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "vasp-analyzer"
+version = "0.0.1"
+authors = [
+  { name="Yannick G.", email="study.gyannick@gmail.com" },
+]
+description = "A small package to load vasprun.xml files into python and return the data in a useful format"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GNU GPL v3",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/krispy-kenay/vasp-analyzer"
+"Bug Tracker" = "https://github.com/krispy-kenay/vasp-analyzer/issues"
