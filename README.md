@@ -1,0 +1,1 @@
+# vasp-spin-analyzer
