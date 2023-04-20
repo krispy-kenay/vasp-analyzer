@@ -339,7 +339,7 @@ class KPOINTS:
     def get_homb_lumb(self, efermi, cutoff=1e-3, mode_alt=False): # Trash I think
         diff = []
         for key, value in self.data.items():
-            diff.append(value.calc_gap_diff(efermi, cutoff, mode_alt))
+            diff.append(value.calc_gap_diff(efermi, cutoff))
         coords = self.get_path()
         diff = np.array(diff).reshape(-1,1)
         return np.concatenate([coords, diff], axis=1)
