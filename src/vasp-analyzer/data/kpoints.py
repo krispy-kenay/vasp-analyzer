@@ -136,15 +136,34 @@ class KPOINT:
         self.weight = wgt
     
     @staticmethod
-    def _arr_converter_simplifier(data, cols):
-        yx = np.vstack(np.nonzero(data)).T
-        out = []
-        for y, x in yx:
-            string = 'ion '+ str(y+1) + ' : ' + str(data[y][x]) + ' ' + str(cols[x])
-            out.append(string)
-        return out
+    def _arr_converter_sublattice(arr, moments, inv=False):
+        #arr = arr.reshape((-1, 9))
+        #plat = np.zeros((1,9))
+        #nlat = np.zeros((1,9))
+        #onat = np.zeros((1,9))
+        p = np.sum(arr[np.argwhere(moments > 0).reshape(-1)], axis=0)
+        n = np.sum(arr[np.argwhere(moments < 0).reshape(-1)], axis=0)
+        o = np.sum(arr[np.argwhere(moments == 0).reshape(-1)], axis=0)
+        
+        if inv==False:
+            out = np.concatenate([p, n, o])
+        else:
+            out = np.concatenate([n, p, o])
+        return out.reshape((-1))
     
-    def add_site_projections(self, sign, band, data):
+    @staticmethod
+    def _arr_order_by_magmom(arr, moments, inv=False):
+        p = arr[np.argwhere(moments > 0).reshape(-1)]
+        n = arr[np.argwhere(moments < 0).reshape(-1)]
+        o = arr[np.argwhere(moments == 0).reshape(-1)]
+        
+        if inv==False:
+            out = np.concatenate([p, n, o],axis=0)
+        else:
+            out = np.concatenate([n, p, o],axis=0)
+        return out.reshape((-1))
+    
+    def add_site_projections(self, sign, band, data, mom):
         # Sum over all ions
         #dat = np.sum(data, axis=0)
 
@@ -152,9 +171,15 @@ class KPOINT:
         #dat = np.reshape(data, (-1))
 
         # Temp sum over elements
-        dat1 = np.sum(data[:18], axis=0)
-        dat2 = np.sum(data[18:], axis=0)
-        dat = np.concatenate([dat1, dat2])
+        #dat1 = np.sum(data[:18], axis=0)
+        #dat2 = np.sum(data[18:], axis=0)
+        #dat = np.concatenate([dat1, dat2])
+
+        # Sum by spin
+        if sign == 1:
+            dat = self._arr_order_by_magmom(data, mom)
+        else:
+            dat = self._arr_order_by_magmom(data, mom, inv=True)
         
         index = int(band.replace('band ', '')) - 1
         length = self.get_len()
@@ -248,10 +273,10 @@ class KPOINTS:
         return np.concatenate([coords, diff], axis=1)
 
     
-    def get_homb_lumb(self, efermi, cutoff=1e-3, mode_alt=False):
+    def get_homb_lumb(self, efermi, cutoff=1e-3):
         diff = []
         for key, value in self.data.items():
-            diff.append(value.calc_gap_diff(efermi, cutoff, mode_alt))
+            diff.append(value.calc_gap_diff(efermi, cutoff))
         coords = self.get_path()
         diff = np.array(diff).reshape(-1,1)
         return np.concatenate([coords, diff], axis=1)
@@ -319,6 +344,11 @@ class KPOINTS:
         fields = xml.findall('.//projected/array/field')
         cols = [a.text.strip() for a in fields]
         set = xml.findall('.//projected/array/set/')
+        momo = xml.findall('.//incar/v[@name="MAGMOM"]')
+        for moms in momo:
+            mom = [float(x) for x in moms.text.split()]
+            print(mom)
+
 
         for spins in set:
             spin = spins.attrib['comment']
@@ -333,4 +363,4 @@ class KPOINTS:
                     bdi = band.attrib['comment']
                     out = np.array([list(map(lambda x: float(x), e.text.split())) for e in band])
                     #self.data[kpi].add_site_projections(spi, bdi, out, cols)
-                    self.data[modifier+kpi].add_site_projections(spi, bdi, out)
+                    self.data[modifier+kpi].add_site_projections(spi, bdi, out, np.array(mom))
