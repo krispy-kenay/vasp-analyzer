@@ -150,6 +150,110 @@ class KPOINT:
         diffg = diff * prefac
         return diffg
     
+    def calc_spin_del2(self, absolute=False): # sum highest to all and vice versa
+        ids = [np.argwhere(self.spin_up[:,1] == 1).argmax(), np.argwhere(self.spin_down[:,1] == 1).argmax()]
+        diff = 0
+        if self.spin_up is not None and self.spin_down is not None:
+            #for i in range(len(self.spin_up)):
+            for i in range(ids[1]-5, ids[1]):
+                if self.spin_up[i, 1] == 1:
+                    diff += ((self.spin_up[i, 0]-self.spin_down[ids[1], 0]) * np.dot(self.spin_up_site[i],self.spin_down_site[ids[1]]))
+
+            #for j in range(len(self.spin_down)):
+            for j in range(ids[0]-5, ids[0]):
+                if self.spin_down[j, 1] == 1:
+                    diff += ((self.spin_up[ids[0], 0]-self.spin_down[j, 0]) * np.dot(self.spin_up_site[ids[0]],self.spin_down_site[j]))
+
+        prefac = 1/(np.count_nonzero(self.spin_up[:,1]))
+        diffg = diff * prefac
+        return diffg
+    
+    def calc_spin_del3(self): # sum highest to all and vice versa
+        diff = 0
+        if self.spin_up is not None and self.spin_down is not None:
+            for i in range(len(self.spin_up)):
+                for j in range(len(self.spin_down)):
+                        diff += ((self.spin_up[i, 0]-self.spin_down[j, 0]) * np.dot(self.spin_up_site[i],self.spin_down_site[j]))
+                        #* np.abs((self.spin_up[i, 0]-self.spin_down[j, 0]) * np.dot(self.spin_up_site[i],self.spin_down_site[j]))
+        prefac = 1/(np.count_nonzero(self.spin_up[:,1]))
+        diffg = diff * prefac
+        return diffg
+    
+    def calc_spin_del4(self, absolute=False): # sum all
+        diff = 0
+        if self.spin_up is not None and self.spin_down is not None:
+            for i in range(len(self.spin_up)):
+                    if self.spin_up[i, 1] == 1 and self.spin_down[i, 1] == 1:
+                        #diff += ((self.spin_up[i, 0]-self.spin_down[i, 0]) * np.dot(self.spin_up_site[i],self.spin_down_site[i]))
+                        diff += ((self.spin_up[i, 0]-self.spin_down[i, 0]) * 1)
+                        #* np.abs((self.spin_up[i, 0]-self.spin_down[j, 0]) * np.dot(self.spin_up_site[i],self.spin_down_site[j]))
+        prefac = 1/(np.count_nonzero(self.spin_up[:,1]))
+        diffg = diff * prefac
+        return diffg
+    
+    def calc_spin_del5(self, absolute=False): # sum all
+        diff = 0
+        if self.spin_up is not None and self.spin_down is not None:
+            for i in range(len(self.spin_up)):
+                if self.spin_up[i, 1] == 1:
+                    maxd = 0
+                    maxid = 0
+                    for j in range(len(self.spin_down)):
+                        if self.spin_down[j, 1] == 1 and abs(self.spin_up[i, 0] - self.spin_down[j, 0]) < 1:
+                            dotp = np.dot(self.spin_up_site[i],self.spin_down_site[j])
+                            if dotp > maxd:
+                                maxd  = dotp
+                                maxid = j
+                    diff += ((self.spin_up[i, 0]-self.spin_down[maxid, 0]) * maxd)
+                    print(i, maxid)
+            for i in range(len(self.spin_down)):
+                if self.spin_down[i, 1] == 1:
+                    maxd = 0
+                    maxid = 0
+                    for j in range(len(self.spin_up)):
+                        if self.spin_up[j, 1] == 1 and abs(self.spin_up[j, 0] - self.spin_down[i, 0]) < 1:
+                            dotp = np.dot(self.spin_down_site[i],self.spin_up_site[j])
+                            if dotp > maxd:
+                                maxd  = dotp
+                                maxid = j
+                    diff += ((self.spin_up[maxid, 0]-self.spin_down[i, 0]) * maxd)
+                    print(i, maxid)
+        prefac = 1/(np.count_nonzero(self.spin_up[:,1]))
+        diffg = diff * prefac
+        return diffg
+    
+    def calc_spin_del6(self, absolute=False): # sum all
+        diff = 0
+        ids = [np.argwhere(self.spin_up[:,1] == 1).argmax(), np.argwhere(self.spin_down[:,1] == 1).argmax()]
+        if self.spin_up is not None and self.spin_down is not None:
+                i = ids[0]
+                if self.spin_up[i, 1] == 1:
+                    maxd = 0
+                    maxid = 0
+                    for j in range(len(self.spin_down)):
+                        if self.spin_down[j, 1] == 1 and abs(self.spin_up[i, 0] - self.spin_down[j, 0]) < 0.5:
+                            dotp = np.dot(self.spin_up_site[i],self.spin_down_site[j])
+                            if dotp > maxd:
+                                maxd  = dotp
+                                maxid = j
+                    diff += ((self.spin_up[i, 0]-self.spin_down[maxid, 0]) * maxd)
+                    print(i, maxid)
+                i = ids[1]
+                if self.spin_down[i, 1] == 1:
+                    maxd = 0
+                    maxid = 0
+                    for j in range(len(self.spin_up)):
+                        if self.spin_up[j, 1] == 1 and abs(self.spin_up[j, 0] - self.spin_down[i, 0]) < 0.5:
+                            dotp = np.dot(self.spin_down_site[i],self.spin_up_site[j])
+                            if dotp > maxd:
+                                maxd  = dotp
+                                maxid = j
+                    diff += ((self.spin_up[maxid, 0]-self.spin_down[i, 0]) * maxd)
+                    print(i, maxid)
+        prefac = 1/(np.count_nonzero(self.spin_up[:,1]))
+        diffg = diff * prefac
+        return diffg
+    
     def calc_spin_del_hun(self):
         from scipy.optimize import linear_sum_assignment
         cost_matrix = np.zeros((len(self.spin_up[self.spin_up[:, 1] == 1]), len(self.spin_down[self.spin_down[:, 1] == 1])))
@@ -259,6 +363,7 @@ class KPOINT:
             if not self.spin_neut_site:
                 self.spin_neut_site = [None] * length
             self.spin_neut_site[index] = dat
+
 '''
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
@@ -339,7 +444,7 @@ class KPOINTS:
     def get_homb_lumb(self, efermi, cutoff=1e-3, mode_alt=False): # Trash I think
         diff = []
         for key, value in self.data.items():
-            diff.append(value.calc_gap_diff(efermi, cutoff))
+            diff.append(value.calc_gap_diff(efermi, cutoff, mode_alt))
         coords = self.get_path()
         diff = np.array(diff).reshape(-1,1)
         return np.concatenate([coords, diff], axis=1)
