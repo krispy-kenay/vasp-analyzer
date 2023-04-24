@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 import os
+from vasp import VASP
 
-#from data_handler import VASP
-#from vasp_analyzer import VASP
 #from plot_handler import vPlot, hPlot
 
 __author__ = "Yannick G."
