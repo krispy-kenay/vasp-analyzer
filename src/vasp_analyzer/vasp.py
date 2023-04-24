@@ -41,17 +41,18 @@ class VASP:
         else:
             raise ValueError("Please provide either a string or list of files!")
 
+        # Objects
         self.tdos = total_dos
         self.pdos = partial_dos
         self.kpoints = k_points
         self.incar = in_car
+
+        # Properties
         self.efermi = eferm
         self.elements = None
 
-        # Set up triggers
-        self.trigger_incar = False
-        self.trigger_doscar = False
-        self.trigger_kpoints = False
+        # Set up trigger
+        self.trigger_projections = False
     
     def load_all(self):
         self.load(inc=True, dosc=True, kp=True, pro=True)
@@ -62,10 +63,6 @@ class VASP:
              kp:bool=False,
              pro:bool=False
              ):
-        if not self.incar: self.incar = INCAR()
-        if not self.tdos: self.tdos = DOSC(dostype='total')
-        if not self.pdos: self.pdos = DOSC(dostype='partial')
-        if not self.kpoints: self.kpoints = KPOINTS()
 
         for file in self.files:
             xml = xml_handler(file + '/vasprun.xml')
@@ -74,17 +71,20 @@ class VASP:
             else:
                 modi = ''
             
-            if inc == True:
-                self.trigger_incar = True
+            if inc == True and self.incar is None:
+                self.incar = INCAR()
                 self.incar.load(xml)
-            if dosc == True:
-                self.trigger_doscar = True
+            if dosc == True and (self.tdos is None or self.pdos is None):
+                self.tdos = DOSC(dostype='total')
+                self.pdos = DOSC(dostype='partial')
                 self.tdos.load(xml)
+                self.efermi = self.tdos.efermi
                 self.pdos.load(xml)
-            if kp == True:
-                self.trigger_kpoints = True
+            if kp == True and self.kpoints is None:
+                self.kpoints = KPOINTS()
+                print('Loading KPOINTS')
                 self.kpoints.load(xml, modifier=modi)
-            if pro == True:
+            if pro == True and self.trigger_projections == False:
                 self.trigger_projections = True
                 self.kpoints.load_site_projections(xml, modifier=modi)
     
@@ -98,26 +98,42 @@ class VASP:
                 raise ValueError('Please provide a type for the partial DOS')
             else:
                 return self.pdos.calc_dos(subtyp)
+    
 
-    def from_vasprun(self, folder, file):
-        if type(file) == str:
-            xml = xml_handler(folder + file + '/vasprun.xml')
-            self.load_INCAR(xml)
-            self.load_DOSCAR(xml)
-            self.load_KPOINTS(xml)
-        elif type(file) == list:
-            xml = xml_handler(folder + file[0] + '/vasprun.xml')
-            self.load_INCAR(xml)
-            self.load_DOSCAR(xml)
-            kpointnum = xml.find(".//kpoints/generation/*[@name='divisions']")
-            if not self.kpoints:
-                try:
-                    self.kpoints = KPOINTS(divisions=np.prod([int(i) for i in kpointnum.text.split()]))
-                except:
-                    self.kpoints = KPOINTS(divisions=1)
-            for i in range(len(file)):
-                xml = xml_handler(folder + file[i] + '/vasprun.xml')
-                self.load_KPOINTS(xml, modifier=str(file[i])+' ')
+
+
+
+    # FINAL?
+    # FINAL?
+    # FINAL?
+    def get_bs(self):
+        self.load(kp=True)
+        return self.kpoints.get_band_structure()
+    
+    def get_spin_delta_occ(self, cutoff=1e-3):
+        self.load(kp=True)
+        return self.kpoints.get_spin_difference_hl(mode='occupied', cutoff=cutoff)
+    
+    def get_spin_delta_tot(self, cutoff=1e-3):
+        self.load(kp=True)
+        return self.kpoints.get_spin_difference_hl(mode='total', cutoff=cutoff)
+
+    def get_spin_delta_hob(self):
+        self.load(kp=True)
+        return self.kpoints.get_spin_difference_hl(mode='highest')
+    
+    def get_spin_delta_lub(self):
+        self.load(kp=True)
+        return self.kpoints.get_spin_difference_hl(mode='lowest')
+    
+    def get_spin_delta_hun(self):
+        self.load(kp=True)
+        return self.kpoints.get_spin_difference_hl(mode='occupied_hungarian')
+
+
+
+
+
 
     def rotation_matrix(self, angle):
         theta = np.radians(angle)
