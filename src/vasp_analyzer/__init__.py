@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 import os
-from vasp import VASP
+from .vasp import VASP
 
 #from plot_handler import vPlot, hPlot
 
