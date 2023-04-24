@@ -1,9 +1,9 @@
 import numpy as np
 
-from data.xml import xml_handler
-from data.incar import INCAR
-from data.kpoints import KPOINTS
-from data.dos import DOSC
+from .data.xml import xml_handler
+from .data.incar import INCAR
+from .data.kpoints import KPOINTS
+from .data.dos import DOSC
 
 '''
 --------------------------------------------------------------------------------
