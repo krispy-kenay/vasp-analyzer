@@ -4,8 +4,8 @@ from __future__ import annotations
 import os
 
 #from data_handler import VASP
-from vasp import VASP
-from plot_handler import vPlot, hPlot
+#from vasp_analyzer import VASP
+#from plot_handler import vPlot, hPlot
 
 __author__ = "Yannick G."
 __email__ = "study.gyannick@gmail.com"
