@@ -9,4 +9,4 @@ from plot_handler import vPlot, hPlot
 
 __author__ = "Yannick G."
 __email__ = "study.gyannick@gmail.com"
-__version__ = "2023.4.9"
+__version__ = "2023.4.24"
