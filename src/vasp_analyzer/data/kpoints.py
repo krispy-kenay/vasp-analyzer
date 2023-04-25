@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.optimize import linear_sum_assignment
 
 '''
 --------------------------------------------------------------------------------
@@ -71,6 +72,10 @@ class KPOINT:
         wgt = "Weight:"
         return  f"{name:<15}{self.name:>40} \n{coords:<15}{str(self.coordinates):>40} \n{wgt:<15}{self.weight:>40}"
     
+    ########################################
+    # Adding Methods
+    ########################################
+
     def add_coordinates(self, coords):
         self.coordinates = coords
     
@@ -79,7 +84,7 @@ class KPOINT:
             self.spin_neut = spin
         if val == 1:
             self.spin_up = spin
-        if val == -1:
+        if val == -1 or val == 2:
             self.spin_down = spin
     
     def add_spin_pro(self, val, spin):
@@ -87,36 +92,92 @@ class KPOINT:
             self.spin_neut_pro = spin
         if val == 1:
             self.spin_up_pro = spin
-        if val == -1:
+        if val == -1 or val == 2:
             self.spin_down_pro = spin
     
     def add_weight(self, wgt):
         self.weight = wgt
     
+    ########################################
+    # Calculation Methods
+    ########################################
+    
     # Simple calculation of up spin energies - down spin energies (no weighing of orbital character)
     def calc_spin_diff(self, occupied=True, cutoff=1e-3):
-        if self.spin_up is not None and self.spin_down is not None:
-            if occupied == True:
-                diff = np.sum(self.spin_up[self.spin_up[:, 1] == 1, 0] - self.spin_down[self.spin_down[:, 1] == 1, 0])
-            else:
-                diff = np.sum(self.spin_up - self.spin_down)
-            if abs(diff) < cutoff:
-                diff = 0
-            return diff
-        else:
+        if self.spin_up is None and self.spin_down is None:
             raise ValueError("Either spin up or spin down information is missing! \n Make sure that you have set LORBIT = 2 and LSORBIT = True")
+        
+        if occupied == True:
+            diff = np.sum(self.spin_up[self.spin_up[:, 1] == 1, 0] - self.spin_down[self.spin_down[:, 1] == 1, 0])
+        else:
+            diff = np.sum(self.spin_up - self.spin_down)
+        if abs(diff) < cutoff:
+            diff = 0
+        return diff
     
+    # More complex calculation of up spin energies - down spin energies based on matching pairs of orbital characters (using the hungarian algorithm)
+    def calc_hun_sort_diff(self, moment, cutoff=3):
+        if self.spin_up is None or self.spin_down is None or self.spin_up_site is None or self.spin_down_site is None:
+            raise ValueError("Either spin up, spin down or site projection information is missing! \n Make sure that you have set LORBIT = 2 and LSORBIT = True")
+
+        spin_up_filtered = self.spin_up[self.spin_up[:, 1] == 1]
+        spin_down_filtered = self.spin_down[self.spin_down[:, 1] == 1]
+        num_up = len(spin_up_filtered)
+        num_down = len(spin_down_filtered)
+
+        site_ups = self._reorder_sum_by_magmom(self.spin_up_site[:num_up], moments=moment, inv=False)
+        site_downs= self._reorder_sum_by_magmom(self.spin_down_site[:num_down], moments=moment, inv=True)
+        cost_matrix = - np.dot(site_ups, site_downs.T)
+
+        abs_diff = np.abs(spin_up_filtered[:,0].reshape(-1,num_up) - spin_down_filtered[:,0].reshape(-1,num_down).T)
+        cost_matrix[abs_diff > cutoff] = 0
+
+        row_ind, col_ind = linear_sum_assignment(cost_matrix)
+        diff = np.sum(spin_up_filtered[row_ind,0] - spin_down_filtered[col_ind,0])
+
+        prefac = 1 / num_up
+        diffg = diff * prefac
+        return diffg
+    
+    ########################################
+    # Getter Methods
+    ########################################
+
     # Return index of highest occupied band
     def get_hob(self):
+        if self.spin_up is None and self.spin_down is None:
+            raise ValueError("Either spin up or spin down information is missing! \n Make sure that you have set LORBIT = 2 and LSORBIT = True")
+        
         ids = [np.argwhere(self.spin_up[:,1] == 1).argmax(), np.argwhere(self.spin_down[:,1] == 1).argmax()]
         return [self.spin_up[ids[0],0], self.spin_down[ids[1], 0]]
     
     # Return index of lowest unoccupied band
     def get_lub(self):
+        if self.spin_up is None and self.spin_down is None:
+            raise ValueError("Either spin up or spin down information is missing! \n Make sure that you have set LORBIT = 2 and LSORBIT = True")
+        
         ids = [np.argwhere(self.spin_up[:,1] == 0).argmin(), np.argwhere(self.spin_down[:,1] == 0).argmin()]
         return [self.spin_up[ids[0],0], self.spin_down[ids[1], 0]]
 
-    
+    ########################################
+    # Static Methods
+    ########################################
+
+    @staticmethod
+    def _reorder_sum_by_magmom(arrs, moments, inv=False):
+        p_mask = moments > 0
+        n_mask = moments < 0
+        o_mask = moments == 0
+
+        p_sums = [np.sum(arr.reshape(-1, 9)[p_mask], axis=0) for arr in arrs]
+        n_sums = [np.sum(arr.reshape(-1, 9)[n_mask], axis=0) for arr in arrs]
+        o_sums = [np.sum(arr.reshape(-1, 9)[o_mask], axis=0) for arr in arrs]
+
+        if inv:
+            outs = np.stack([np.concatenate([n, p, o]) for n, p, o in zip(n_sums, p_sums, o_sums)])
+        else:
+            outs = np.stack([np.concatenate([p, n, o]) for p, n, o in zip(p_sums, n_sums, o_sums)])
+        return outs
 
 
 
@@ -401,8 +462,8 @@ class KPOINTS:
         kpoints[0] = 0
         return np.arange(len(self.data)), kpoints, bs_up.T, bs_down.T
 
-    # Calculates difference between up spin energy and hdown spin energy (in different variations). 
-    def get_spin_difference_hl(self, mode, cutoff=1e-3):
+    # Calculates difference between up spin energy and down spin energy (in different variations). 
+    def get_spin_difference_hl(self, mode, cutoff=1e-3, moment=None):
         length = len(self.data)
         if mode == 'highest':
             diff = [value.get_hob()[0] - value.get_hob()[1] for value in self.data.values()]
@@ -413,7 +474,10 @@ class KPOINTS:
         elif mode == 'total':
             diff = [value.calc_spin_diff(occupied=False, cutoff=cutoff) for value in self.data.values()]
         elif mode == 'occupied_hungarian':
-            diff = [value.calc_spin_del_hun() for value in self.data.values()]
+            if moment is not None:
+                diff = [value.calc_hun_sort_diff(moment=moment) for value in self.data.values()]
+            else:
+                raise ValueError("include a valid moment!")
         else:
             raise ValueError("provide a valid mode!")
         coords = self.get_path()
