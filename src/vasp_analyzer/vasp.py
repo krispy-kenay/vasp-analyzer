@@ -127,8 +127,8 @@ class VASP:
         return self.kpoints.get_spin_difference_hl(mode='lowest')
     
     def get_spin_delta_hun(self):
-        self.load(kp=True)
-        return self.kpoints.get_spin_difference_hl(mode='occupied_hungarian')
+        self.load(kp=True, inc=True)
+        return self.kpoints.get_spin_difference_hl(mode='occupied_hungarian', moment=np.array(self.incar['MAGMOM']))
 
 
 
