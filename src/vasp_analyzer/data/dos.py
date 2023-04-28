@@ -103,11 +103,10 @@ DOS file handler
 '''
 
 class DOSC:
-    def __init__(self, dostype:str):
+    def __init__(self):
         self.spin_up = {}
         self.spin_neut = {}
         self.spin_down = {}
-        self.dostype = dostype
         self.efermi = None
         self.elements = None
     
@@ -120,8 +119,6 @@ class DOSC:
           return self.spin_down
     
     def add_DOS(self, dos):
-        if dos['type'] != self.dostype:
-            raise TypeError("types need to match between different DOS types!")
         if dos['spin'] == 1:
             self.spin_up[dos.ion] = dos
         if dos['spin'] == 0:
@@ -160,20 +157,23 @@ class DOSC:
                 for orb in spd:
                     out[i][el + orb] = 0
             for key, value in self[i].items():
-                s, p, d = value.get_spd()
-                dat_spd = [s,p,d]
-                for j in range(3):
-                    if 'el' in typ:
-                        ele = value.elements + ' '
-                    else:
-                        ele = ''
-                    out[i][ele + spd[j]] = self._combine_arr(out[i][ele + spd[j]], dat_spd[j])
+                if key != 0:
+                    s, p, d = value.get_spd()
+                    dat_spd = [s,p,d]
+                    for j in range(3):
+                        if 'el' in typ:
+                            ele = value.elements + ' '
+                        else:
+                            ele = ''
+                        out[i][ele + spd[j]] = self._combine_arr(out[i][ele + spd[j]], dat_spd[j])
         return out
     
-    def get_energy(self, efermi):
+    def get_energy(self):
        spins = self.get_spins()
        for key in self[spins[0]].keys():
-          return self[spins[0]][key].energy - efermi
+          return self[spins[0]][key].energy - self.efermi
+       
+
     
     def _combine_arr(self, to_add, add):
         if type(to_add) == int:
@@ -187,21 +187,21 @@ class DOSC:
         out = []
         for i in spins:
             for key, value in self[i].items():
-                if value.elements not in out:
-                    out.append(value.elements)
+                if key != 0:
+                    if value.elements not in out:
+                        out.append(value.elements)
+        return out
+    
+    def get_tdos(self):
+        spins = self.get_spins()
+
+        out = {}
+        for i in spins:
+            out[i] = {}
+            out[i]['total'] = self[i][0].container['total']
         return out
 
-    def get_tdos(self):
-       spins = self.get_spins()
-
-       out = {}
-       for i in spins:
-          out[i] = {}
-          for key in self[i].keys():
-             out[i]['total'] = self[i][key].container['total']
-       return out
-
-    def load(self, xml):
+    def load(self, xml, modifier=''):
         tree = xml.iterfind('.//calculation/dos/')
         cat = [i.tag for i in tree]
 
@@ -212,7 +212,7 @@ class DOSC:
             atoms = [q.text.split() for q in tree2]
             self.elements = np.array(atoms).reshape(-1,2)
         
-        if self.dostype == 'total':
+        if 'total' in cat:
             cols = [col.text.strip() for col in xml.iterfind('.//calculation/dos/total/array/field')]
             cols.remove('energy')
             spins = [j.attrib['comment'] for j in xml.find('.//calculation/dos/total/array/set')]
@@ -222,7 +222,7 @@ class DOSC:
                 dos = DOS(dostype='total', ion='ion 0', spin=spin, columns=cols, data=arr[:,1:], energies=arr[:,0], elements=np.unique(ats[:,0]))
                 self.add_DOS(dos=dos)
 
-        if self.dostype == 'partial':
+        if 'partial' in cat:
             cols = [col.text.strip() for col in xml.iterfind('.//calculation/dos/partial/array/field')]
             cols.remove('energy')
             ions = [i.attrib['comment'] for i in xml.findall('.//calculation/dos/partial/array/set/')]
