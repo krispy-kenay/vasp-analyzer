@@ -18,11 +18,8 @@ Main VASP handler
 
 class VASP:
     def __init__(self,
-               file,
-               total_dos=None,
-               partial_dos=None,
-               k_points=None,
-               in_car=None,
+               filepath=None,
+               incar=INCAR(),
                eferm=None
                ):
         """
@@ -30,93 +27,76 @@ class VASP:
         Args:
             total_dos: DOSC object of 'total' type
             partial_dos: DOSC object of 'partial' type
-            k_points: KPOINTS object
-            in_car: INCAR object
+            kpoints: KPOINTS object
+            incar: INCAR object
             eferm: fermi energy
         """
-        if type(file) == str:
-            self.files = [file]
-        elif type(file) == list:
-            self.files = file
-        else:
-            raise ValueError("Please provide either a string or list of files!")
+        if filepath is not None: self.add_filepath(filepath) 
+        else: self.files = None
 
         # Objects
-        self.tdos = total_dos
-        self.pdos = partial_dos
-        self.kpoints = k_points
-        self.incar = in_car
+        #self.incar = None
+        #self.kpoints = None
+        #self.dos = None
+        
+        self.classes = {'incar': incar,
+                        'kpoints': KPOINTS(),
+                        'dos': DOSC(),
+                        'projections': 0}
+        
+        self.triggers = {k: False for k in self.classes}
 
         # Properties
         self.efermi = eferm
         self.elements = None
 
         # Set up trigger
+        # Hacky triggers are needed for now to be able to load multiple files while preventing duplicate loading
+        self.loaded = False
+        self.trigger_incar = False
+        self.trigger_kpoints = False
+        self.trigger_doscar = False
         self.trigger_projections = False
     
-    def load_all(self):
-        self.load(inc=True, dosc=True, kp=True, pro=True)
+    def __getattr__(self, key):
+        if key in self.classes:
+            return self.classes.get(key)
+        else:
+            raise KeyError("Nonexistent")
+
+    ########################################
+    # Adding Methods
+    ########################################
     
-    def load(self,
-             inc:bool=False,
-             dosc:bool=False,
-             kp:bool=False,
-             pro:bool=False
-             ):
-
-        for file in self.files:
-            xml = xml_handler(file + '/vasprun.xml')
-            if len(self.files) != 1:
-                modi = file + ' '
-            else:
-                modi = ''
-            
-            if inc == True and self.incar is None:
-                self.incar = INCAR()
-                self.incar.load(xml)
-            if dosc == True and (self.tdos is None or self.pdos is None):
-                self.tdos = DOSC(dostype='total')
-                self.pdos = DOSC(dostype='partial')
-                self.tdos.load(xml)
-                self.efermi = self.tdos.efermi
-                self.pdos.load(xml)
-            if kp == True and self.kpoints is None:
-                self.kpoints = KPOINTS()
-                print('Loading KPOINTS')
-                self.kpoints.load(xml, modifier=modi)
-            if pro == True and self.trigger_projections == False:
-                self.trigger_projections = True
-                self.kpoints.load_site_projections(xml, modifier=modi)
-    
-    def get_dos(self, typ:str, subtyp:str=None):
-        if self.tdos is None:
-            self.load(dosc=True)
-        if typ == 'total':
-            return self.tdos.get_tdos()
-        if typ == 'partial':
-            if not subtyp:
-                raise ValueError('Please provide a type for the partial DOS')
-            else:
-                return self.pdos.calc_dos(subtyp)
-    
+    def add_filepath(self, filepath):
+        if type(filepath) == str:
+            self.files = [filepath]
+        elif type(filepath) == list:
+            self.files = filepath
+        else:
+            raise ValueError("Please provide either a string or list of filename strings!")
 
 
+    ########################################
+    # Getter Methods
+    ########################################
 
-
-    # FINAL?
-    # FINAL?
-    # FINAL?
-    def get_bs(self):
-        self.load(kp=True)
+    # For Kpoints
+    def get_band_structure(self):
+        self.load(kpoints=True)
         return self.kpoints.get_band_structure()
     
-    def get_spin_delta_occ(self, cutoff=1e-3):
-        self.load(kp=True)
-        return self.kpoints.get_spin_difference_hl(mode='occupied', cutoff=cutoff)
+    def get_band_structure_matched(self):
+        self.load(kpoints=True, projections=True)
+        return self.kpoints.get_sorted_hun_bands()
     
-    def get_spin_delta_tot(self, cutoff=1e-3):
+    def get_spin_delta_occ(self, cutoff=1e-3, absolute=False):
+        self.load(kpoints=True)
+        return self.kpoints.get_spin_difference_hl(mode='occupied', cutoff=cutoff, absolute=absolute)
+    
+    def get_spin_delta_tot(self, cutoff=1e-3, absolute=False):
         self.load(kp=True)
-        return self.kpoints.get_spin_difference_hl(mode='total', cutoff=cutoff)
+        return self.kpoints.get_spin_difference_hl(mode='total', cutoff=cutoff, absolute=absolute)
 
     def get_spin_delta_hob(self):
         self.load(kp=True)
@@ -126,30 +106,56 @@ class VASP:
         self.load(kp=True)
         return self.kpoints.get_spin_difference_hl(mode='lowest')
     
-    def get_spin_delta_hun(self):
-        self.load(kp=True, inc=True)
-        return self.kpoints.get_spin_difference_hl(mode='occupied_hungarian', moment=np.array(self.incar['MAGMOM']))
+    def get_spin_delta_hun(self, absolute=False):
+        self.load(kpoints=True, incar=True, projections=True)
+        return self.kpoints.get_spin_difference_hl(mode='occupied_hungarian', moment=np.array(self.incar['MAGMOM']), absolute=absolute)
 
-
-
-
-
-
-    def rotation_matrix(self, angle):
-        theta = np.radians(angle)
-        c, s = np.cos(theta), np.sin(theta)
-        R = np.array(((c, -s, 0), (s, c, 0), (0,0,1)))
-        return R
+    # For DOS
+    def get_dos_total(self):
+        self.load(dos=True)
+        return (self.dos.get_energy(), self.dos.get_tdos())
     
-    def rotate_coords_weight(self, data):
-        coords = data[:,0:3]
-        weight = data[:,3]
-        weight = weight.reshape(-1,1)
-        angles = [60, 120, 180, 240, 300]
-        out = data
-        for angle in angles:
-            rot = self.rotation_matrix(angle)
-            new_coord = np.dot(coords, rot)
-            new_data = np.concatenate([new_coord, weight], axis=1)
-            out = np.vstack((out, new_data))
-        return out
+    def get_dos_element(self):
+        self.load(dos=True)
+        return (self.dos.get_energy(), self.dos.calc_dos('element'))
+    
+    def get_dos_orbital(self):
+        self.load(dos=True)
+        return (self.dos.get_energy(), self.dos.calc_dos('spd'))
+    
+    def get_dos_orbital_element(self):
+        self.load(dos=True)
+        return (self.dos.get_energy(), self.dos.calc_dos('element spd'))
+
+    ########################################
+    # Loading Methods
+    ########################################
+
+
+    
+    def load_all(self):
+        self.load(incar=True, dos=True, kpoints=True, projections=True)
+    
+    def load(self, **kwargs):
+        
+        keys = []
+        for key, value in kwargs.items():
+            if key in self.classes and value == True:
+                if self.triggers[key] == False:
+                    keys.append(key)
+                    self.triggers[key] = True
+
+        if keys != []:
+            for i, file in enumerate(self.files):
+                if 'vasprun.xml' not in file: xml = xml_handler(file + '/vasprun.xml')
+                else: self.xml = xml_handler(file)
+
+                if len(self.files) != 1: modi = 'Section ' + str(i) + ' '
+                else: modi = ''
+
+                for key in keys:
+                    print("Loading section: " + str(key))
+                    if key == 'projections':
+                        self.classes['kpoints'].load_site_projections(xml, modifier=modi)
+                    else:
+                        self.classes[key].load(xml, modifier=modi)
