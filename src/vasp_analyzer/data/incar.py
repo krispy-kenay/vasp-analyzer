@@ -25,6 +25,12 @@ class INCAR:
         else:
             raise ValueError("wrong input formatting")
     
+    def __getattr__(self, key):
+        if key in self.container:
+            return self.container.get(key)
+        else:
+            raise KeyError("Nonexistent")
+    
     def __str__(self):
         string = ""
         for key in self.container.keys():
@@ -32,7 +38,7 @@ class INCAR:
             string += f"{out_key:<15} {str(self.container[key]):>40}\n"
         return string
 
-    def load(self, xml):
+    def load(self, xml, modifier=''):
         data_big = xml.findall('.//incar/')
 
         for data in data_big:
