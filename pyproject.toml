@@ -19,6 +19,7 @@ classifiers = [
 dependencies = [
   "numpy>=1.21.0",
   "scikit>=0.17.0",
+  "plotly>=5.3.1",
 ]
 
 [project.urls]
