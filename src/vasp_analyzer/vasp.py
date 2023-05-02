@@ -34,11 +34,6 @@ class VASP:
         if filepath is not None: self.add_filepath(filepath) 
         else: self.files = None
 
-        # Objects
-        #self.incar = None
-        #self.kpoints = None
-        #self.dos = None
-        
         self.classes = {'incar': incar,
                         'kpoints': KPOINTS(),
                         'dos': DOSC(),
@@ -49,14 +44,6 @@ class VASP:
         # Properties
         self.efermi = eferm
         self.elements = None
-
-        # Set up trigger
-        # Hacky triggers are needed for now to be able to load multiple files while preventing duplicate loading
-        self.loaded = False
-        self.trigger_incar = False
-        self.trigger_kpoints = False
-        self.trigger_doscar = False
-        self.trigger_projections = False
     
     def __getattr__(self, key):
         if key in self.classes:
@@ -131,8 +118,6 @@ class VASP:
     # Loading Methods
     ########################################
 
-
-    
     def load_all(self):
         self.load(incar=True, dos=True, kpoints=True, projections=True)
     
