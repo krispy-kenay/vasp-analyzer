@@ -98,6 +98,28 @@ class KPOINT:
     def add_weight(self, wgt):
         self.weight = wgt
     
+    def add_site_projections(self, sign, band, data):
+        dat = np.reshape(data, (-1))
+
+        datlen = len(dat)
+        index = int(band.replace('band ', '')) - 1
+        length = self.get_len()
+
+        if sign == 1:
+            if self.spin_up_site is None:
+                self.spin_up_site = np.zeros((length, datlen))
+            self.spin_up_site[index] = dat
+        
+        if sign == -1:
+            if self.spin_down_site is None:
+                self.spin_down_site = np.zeros((length, datlen))
+            self.spin_down_site[index] = dat
+        
+        if sign == 0:
+            if self.spin_neut_site is None:
+                self.spin_neut_site = np.zeros((length, datlen))
+            self.spin_neut_site[index] = dat
+    
     ########################################
     # Calculation Methods
     ########################################
@@ -166,6 +188,17 @@ class KPOINT:
         
         ids = [np.argwhere(self.spin_up[:,1] == 0).argmin(), np.argwhere(self.spin_down[:,1] == 0).argmin()]
         return [self.spin_up[ids[0],0], self.spin_down[ids[1], 0]]
+    
+    # Return length
+    def get_len(self):
+        if self.spin_up is not None:
+            return len(self.spin_up)
+        elif self.spin_down is not None:
+            return len(self.spin_down)
+        elif self.spin_neut is not None:
+            return len(self.spin_neut)
+        else:
+            raise ValueError("Please create object with a valid eigenval before trying to access the length")
 
     ########################################
     # Static Methods
@@ -186,188 +219,6 @@ class KPOINT:
         else:
             outs = np.stack([np.concatenate([p, n, o]) for p, n, o in zip(p_sums, n_sums, o_sums)])
         return outs
-
-
-
-
-
-
-
-
-
-
-    
-    def get_len(self):
-        if self.spin_up is not None:
-            return len(self.spin_up)
-        elif self.spin_down is not None:
-            return len(self.spin_down)
-        elif self.spin_neut is not None:
-            return len(self.spin_neut)
-        else:
-            raise ValueError("Please create object with a valid eigenval before trying to access the length")
-    
-    def calc_spin_del_hun(self):
-        from scipy.optimize import linear_sum_assignment
-        cost_matrix = np.zeros((len(self.spin_up[self.spin_up[:, 1] == 1]), len(self.spin_down[self.spin_down[:, 1] == 1])))
-
-        for i in range(len(self.spin_up[self.spin_up[:, 1] == 1])):
-            for j in range(len(self.spin_down[self.spin_down[:, 1] == 1])):
-                if abs(self.spin_up[i, 0] - self.spin_down[j, 0]) > 1 or np.dot(self.spin_up_site[i], self.spin_down_site[j]) == 0:
-                    cost_matrix[i, j] = 0
-                else:
-                    cost_matrix[i, j] = - np.dot(self.spin_up_site[i], self.spin_down_site[j])
-        
-        row_ind, col_ind = linear_sum_assignment(cost_matrix)
-
-        diff = 0
-        for q in range(len(row_ind)):
-            y = row_ind[q]
-            x = col_ind[q]
-            #
-            #
-            # SHOULD DOT PRODUCT BE INCLUDED?????????
-            # np.dot(self.spin_up_site[y], self.spin_down_site[x])
-            #
-            diff += (self.spin_up[y, 0] - self.spin_down[x, 0])
-        
-        prefac = 1 / (len(self.spin_up[self.spin_up[:, 1] == 1]))
-        diffg = diff * prefac
-        return diffg
-    
-    def calc_spin_del_hun_mod(self):
-        from scipy.optimize import linear_sum_assignment
-        cost_matrix = np.zeros((len(self.spin_up[self.spin_up[:, 1] == 1]), len(self.spin_down[self.spin_down[:, 1] == 1])))
-
-        for i in range(len(self.spin_up[self.spin_up[:, 1] == 1])):
-            for j in range(len(self.spin_down[self.spin_down[:, 1] == 1])):
-                if abs(self.spin_up[i, 0] - self.spin_down[j, 0]) > 1 or np.dot(self.spin_up_site[i], self.spin_down_site[j]) == 0:
-                    cost_matrix[i, j] = 0
-                else:
-                    cost_matrix[i, j] = - np.dot(self.spin_up_site[i], self.spin_down_site[j])
-        
-        row_ind, col_ind = linear_sum_assignment(cost_matrix)
-
-        diff = 0
-        for q in range(len(row_ind)):
-            y = row_ind[q]
-            x = col_ind[q]
-            #
-            #
-            # SHOULD DOT PRODUCT BE INCLUDED?????????
-            # np.dot(self.spin_up_site[y], self.spin_down_site[x])
-            #
-            diff += (self.spin_up[y, 0] - self.spin_down[x, 0])
-        
-        prefac = 1 / (len(self.spin_up[self.spin_up[:, 1] == 1]))
-        diffg = diff * prefac
-        return diffg
-    
-    def calc_hun_pos(self):
-        from scipy.optimize import linear_sum_assignment
-        cost_matrix = np.zeros((len(self.spin_up[self.spin_up[:, 1] == 1]), len(self.spin_down[self.spin_down[:, 1] == 1])))
-
-        for i in range(len(self.spin_up[self.spin_up[:, 1] == 1])):
-            for j in range(len(self.spin_down[self.spin_down[:, 1] == 1])):
-                if abs(self.spin_up[i, 0] - self.spin_down[j, 0]) > 3 or np.dot(self.spin_up_site[i], self.spin_down_site[j]) == 0:
-                    cost_matrix[i, j] = 0
-                else:
-                    cost_matrix[i, j] = - np.dot(self.spin_up_site[i], self.spin_down_site[j])
-        
-        row_ind, col_ind = linear_sum_assignment(cost_matrix)
-
-        out = []
-        for q in range(len(row_ind)):
-            y = row_ind[q]
-            x = col_ind[q]
-            out.append([self.spin_up[y], self.spin_down[x]])
-        return out
-    
-
-
-
-    
-    @staticmethod
-    def _arr_converter_sublattice(arr, moments, inv=False):
-        #arr = arr.reshape((-1, 9))
-        #plat = np.zeros((1,9))
-        #nlat = np.zeros((1,9))
-        #onat = np.zeros((1,9))
-        p = np.sum(arr[np.argwhere(moments > 0).reshape(-1)], axis=0)
-        n = np.sum(arr[np.argwhere(moments < 0).reshape(-1)], axis=0)
-        o = np.sum(arr[np.argwhere(moments == 0).reshape(-1)], axis=0)
-        
-        if inv==False:
-            out = np.concatenate([p, n, o])
-        else:
-            out = np.concatenate([n, p, o])
-        return out.reshape((-1))
-    
-    @staticmethod
-    def _arr_order_by_magmom(arr, moments, inv=False):
-        p = arr[np.argwhere(moments > 0).reshape(-1)]
-        n = arr[np.argwhere(moments < 0).reshape(-1)]
-        o = arr[np.argwhere(moments == 0).reshape(-1)]
-        
-        if inv==False:
-            out = np.concatenate([p, n, o],axis=0)
-        else:
-            out = np.concatenate([n, p, o],axis=0)
-        return out.reshape((-1))
-    
-    def calc_gap_diff(self, efermi, cutoff=1e-3, mode_alt=False):
-        id_up = [np.abs(self.spin_up[np.argwhere(self.spin_up[:,0] > efermi),0] - efermi).argmin(), np.abs(self.spin_up[np.argwhere(self.spin_up[:,0] < efermi),0] - efermi).argmin()]
-        id_down = [np.abs(self.spin_down[np.argwhere(self.spin_down[:,0] > efermi),0] - efermi).argmin(), np.abs(self.spin_down[np.argwhere(self.spin_down[:,0] < efermi),0] - efermi).argmin()]
-        
-        data_up = [self.spin_up[np.argwhere(self.spin_up[:,0] > efermi),0][id_up[0]], self.spin_up[np.argwhere(self.spin_up[:,0] < efermi),0][id_up[1]]]
-        data_down = [self.spin_down[np.argwhere(self.spin_down[:,0] > efermi),0][id_down[0]], self.spin_down[np.argwhere(self.spin_down[:,0] < efermi),0][id_down[1]]]
-        
-        if mode_alt == False:
-            A = data_up[0] - data_up[1]
-            B = data_down[0] - data_down[1]
-        else:
-            A = data_up[0] - data_down[1]
-            B = data_up[1] - data_down[0]
-        return float(A - B)
-    
-    def add_site_projections(self, sign, band, data, mom):
-        # Sum over all ions
-        #dat = np.sum(data, axis=0)
-
-        # Sum over all orbitals
-        #dat = np.sum(data, axis=1)
-
-        # Full array
-        #dat = np.reshape(data, (-1))
-
-        # Temp sum over elements
-        #dat1 = np.sum(data[:12], axis=0)
-        #dat2 = np.sum(data[12:], axis=0)
-        #dat = np.concatenate([dat1, dat2])
-
-        # Sum by spin
-        if sign == 1:
-            dat = self._arr_converter_sublattice(data, mom)
-        else:
-            dat = self._arr_converter_sublattice(data, mom, inv=True)
-        
-        index = int(band.replace('band ', '')) - 1
-        length = self.get_len()
-
-        if sign == 1:
-            if not self.spin_up_site:
-                self.spin_up_site = [None] * length
-            self.spin_up_site[index] = dat
-        
-        if sign == -1:
-            if not self.spin_down_site:
-                self.spin_down_site = [None] * length
-            self.spin_down_site[index] = dat
-        
-        if sign == 0:
-            if not self.spin_neut_site:
-                self.spin_neut_site = [None] * length
-            self.spin_neut_site[index] = dat
 
 '''
 --------------------------------------------------------------------------------
@@ -412,56 +263,26 @@ class KPOINTS:
             string += f"{key:<15} {str(self.data[key].weight):<15} {str(self.data[key].coordinates):<40}\n"
         return string
 
+    ########################################
+    # Adding Methods
+    ########################################
+
     def add_point(self, kpoint):
         self.data[kpoint.name] = kpoint
-
+    
+    ########################################
+    # Getter Methods
+    ########################################
+    
     def get_path(self):
-        coord = []
-        for key in self.data.keys():
-            coord.append(self.data[key].coordinates)
-        arr = np.array(coord)
-        if type(self.rec_basis) != int:
-            arr = np.dot(arr, self.rec_basis)
-        return arr
-    
-    
-    def get_tot_diff(self): #Using projections
-        diff = []
-        length = len(self.data)
-        for key, value in self.data.items():
-            val = value.calc_spin_del()
-            diff.append(val / length)
-        coords = self.get_path()
-        diff = np.array(diff).reshape(-1,1)
-        return np.concatenate([coords, diff], axis=1)
-    
-    def get_proj_diff(self): #Using projections
-        diff = []
-        length = len(self.data)
-        for key, value in self.data.items():
-            val = value.calc_spin_del_hun()
-            diff.append(val / length)
-        coords = self.get_path()
-        diff = np.array(diff).reshape(-1,1)
-        return np.concatenate([coords, diff], axis=1)
+        coord = np.stack([value.coordinates for value in self.data.values()])
+        if self.rec_basis is not None:
+            coord = np.dot(coord, self.rec_basis)
+        X = coord[:,0]
+        Y = coord[:,1]
+        Z = coord[:,2]
+        return (X, Y, Z)
 
-    
-    def get_homb_lumb(self, efermi, cutoff=1e-3, mode_alt=False): # Trash I think
-        diff = []
-        for key, value in self.data.items():
-            diff.append(value.calc_gap_diff(efermi, cutoff, mode_alt))
-        coords = self.get_path()
-        diff = np.array(diff).reshape(-1,1)
-        return np.concatenate([coords, diff], axis=1)
-
-
-
-
-
-
-    # FINAL?
-    # FINAL?
-    # FINAL?
     # Returns data nicely formatted for a Bandstructure plot
     def get_band_structure(self):
         bs_up = np.vstack([value.spin_up[:, 0] - self.efermi for value in self.data.values()])
@@ -492,29 +313,11 @@ class KPOINTS:
         diff = np.array(diff).reshape(-1, 1)
         diff = diff / length
         return np.vstack([coords.T, diff.T]).T
-
-
-
-
-
-
-
     
-    def get_single_band(self, efermi, mode = 'highest'): # Useless??
-        band_up = []
-        band_down = []
-        kpoints = []
-        i = 0
-        if mode == 'highest':
-            for key, value in self.data.items():
-                hobs = value.get_hob()
-                band_up.append(hobs[0] - efermi)
-                band_down.append(hobs[1] - efermi)
-                if i == 0 or ((i+1) % self.div == 0):
-                    kpoints.append(i)
-                i += 1
-            points = [*range(len(self.data))]
-            return points, kpoints, np.array([band_up]), np.array([band_down])
+    ########################################
+    # Loading Methods
+    ########################################
+
     
     def load(self, xml, modifier=''):
         spin_1 = xml.findall(".//calculation/eigenvalues/array/set/set[@comment='spin 1']/")
