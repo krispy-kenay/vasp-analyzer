@@ -116,7 +116,7 @@ class KPOINT:
         return diff
     
     # More complex calculation of up spin energies - down spin energies based on matching pairs of orbital characters (using the hungarian algorithm)
-    def calc_hun_sort_diff(self, moment, cutoff=3):
+    def calc_hun_sort_diff(self, moment, cutoff=2, absolute=False):
         if self.spin_up is None or self.spin_down is None or self.spin_up_site is None or self.spin_down_site is None:
             raise ValueError("Either spin up, spin down or site projection information is missing! \n Make sure that you have set LORBIT = 2 and LSORBIT = True")
 
@@ -130,10 +130,16 @@ class KPOINT:
         cost_matrix = - np.dot(site_ups, site_downs.T)
 
         abs_diff = np.abs(spin_up_filtered[:,0].reshape(-1,num_up) - spin_down_filtered[:,0].reshape(-1,num_down).T)
-        cost_matrix[abs_diff > cutoff] = 0
 
+        cost_matrix += abs_diff/cutoff
         row_ind, col_ind = linear_sum_assignment(cost_matrix)
-        diff = np.sum(spin_up_filtered[row_ind,0] - spin_down_filtered[col_ind,0])
+        
+
+        difference = spin_up_filtered[row_ind] - spin_down_filtered[col_ind]
+        if absolute == True: diff = np.sum(np.abs(difference[:,0]))
+        else: diff = np.sum(difference[:,0])
+
+        if abs(diff) < 1e-3: diff = 0
 
         prefac = 1 / num_up
         diffg = diff * prefac
