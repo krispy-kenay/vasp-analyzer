@@ -103,17 +103,19 @@ class KPOINT:
     ########################################
     
     # Simple calculation of up spin energies - down spin energies (no weighing of orbital character)
-    def calc_spin_diff(self, occupied=True, cutoff=1e-3):
+    def calc_spin_diff(self, occupied=True, cutoff=1e-3, absolute=False):
         if self.spin_up is None and self.spin_down is None:
             raise ValueError("Either spin up or spin down information is missing! \n Make sure that you have set LORBIT = 2 and LSORBIT = True")
         
-        if occupied == True:
-            diff = np.sum(self.spin_up[self.spin_up[:, 1] == 1, 0] - self.spin_down[self.spin_down[:, 1] == 1, 0])
-        else:
-            diff = np.sum(self.spin_up - self.spin_down)
-        if abs(diff) < cutoff:
-            diff = 0
-        return diff
+        if occupied == True: difference = self.spin_up[self.spin_up[:, 1] == 1, 0] - self.spin_down[self.spin_down[:, 1] == 1, 0]
+        else: difference = self.spin_up - self.spin_down
+        if absolute == True: diff = np.sum(np.abs(difference))
+        else: diff = np.sum(difference)
+        if abs(diff) < cutoff: diff = 0
+        
+        prefac = 1 / len(difference)
+        diffg = diff * prefac
+        return diffg
     
     # More complex calculation of up spin energies - down spin energies based on matching pairs of orbital characters (using the hungarian algorithm)
     def calc_hun_sort_diff(self, moment, cutoff=2, absolute=False):
