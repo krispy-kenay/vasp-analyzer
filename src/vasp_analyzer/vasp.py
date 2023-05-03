@@ -17,32 +17,20 @@ Main VASP handler
 '''
 
 class VASP:
-    def __init__(self,
-               filepath=None,
-               incar=INCAR(),
-               eferm=None
-               ):
+    def __init__(self, filepath=None, empty:bool=False):
         """
-        Usually this object should be set up empty (you are unlikely to want to set it up manually) and fetched from the 'vasprun.xml' file
+        Main class which contains other classes and provides a simplified interface to access functions
         Args:
-            total_dos: DOSC object of 'total' type
-            partial_dos: DOSC object of 'partial' type
-            kpoints: KPOINTS object
-            incar: INCAR object
-            eferm: fermi energy
+            filepath: can add filepath upon object creation (also possible later on)
+            empty: whether to set up a completely empty object (only meant for dev/testing purposes)
         """
         if filepath is not None: self.add_filepath(filepath) 
         else: self.files = None
 
-        self.classes = {'incar': incar,
-                        'kpoints': KPOINTS(),
-                        'dos': DOSC(),
-                        'projections': 0}
-        
-        self.triggers = {k: False for k in self.classes}
+        if empty == False: self.reset()
 
         # Properties
-        self.efermi = eferm
+        self.efermi = None
         self.elements = None
     
     def __getattr__(self, key):
@@ -63,10 +51,36 @@ class VASP:
         else:
             raise ValueError("Please provide either a string or list of filename strings!")
 
+    ########################################
+    # Setter Methods
+    ########################################
+
+    def set_fermi_energy(self, energy:float):
+        self.dos.efermi = energy
+        self.kpoints.efermi = energy
+        self.efermi = energy
+    
+    def set_elements(self, elements:list):
+        self.dos.elements = elements
+    
+    # !CAREFUL! Resets all subclasses, which empties all previously stored content
+    def reset(self):
+        self.classes = {'incar': INCAR(),
+                        'kpoints': KPOINTS(),
+                        'dos': DOSC(),
+                        'projections': 0}
+        
+        self.triggers = {k: False for k in self.classes}
 
     ########################################
     # Getter Methods
     ########################################
+
+    # Get properties
+    def get_fermi_energy(self):
+        self.load(dos=True)
+        return self.dos.efermi
+    
 
     # For Kpoints
     def get_band_structure(self):
@@ -82,15 +96,15 @@ class VASP:
         return self.kpoints.get_spin_difference_hl(mode='occupied', cutoff=cutoff, absolute=absolute)
     
     def get_spin_delta_tot(self, cutoff=1e-3, absolute=False):
-        self.load(kp=True)
+        self.load(kpoints=True)
         return self.kpoints.get_spin_difference_hl(mode='total', cutoff=cutoff, absolute=absolute)
 
     def get_spin_delta_hob(self):
-        self.load(kp=True)
+        self.load(kpoints=True)
         return self.kpoints.get_spin_difference_hl(mode='highest')
     
     def get_spin_delta_lub(self):
-        self.load(kp=True)
+        self.load(kpoints=True)
         return self.kpoints.get_spin_difference_hl(mode='lowest')
     
     def get_spin_delta_hun(self, absolute=False):
@@ -113,6 +127,9 @@ class VASP:
     def get_dos_orbital_element(self):
         self.load(dos=True)
         return (self.dos.get_energy(), self.dos.calc_dos('element spd'))
+    
+    def get_plotter(self):
+        pass
 
     ########################################
     # Loading Methods
