@@ -163,12 +163,14 @@ class vPlot:
     # Plotting Methods
     ########################################
 
+    # Automatic plotter that should get the correct plot type under default conditions (useful when not trying to modify much and just getting a plot)
     def plot(self, **kwargs):
         if self.plot_bands(sup_error=True, **kwargs) or self.plot_dos(sup_error=True, **kwargs) or self.plot_bsdos(sup_error=True, **kwargs) or self.plot_single(sup_error=True, **kwargs) or self.plot_multiple(sup_error=True, **kwargs):
             pass
         else:
             raise RuntimeError("Automatic plotting failed!")
 
+    # Is called by all other plotting functions, checks for a file name and passes keyword arguments to the general layout.
     def _finish_plot(self, filename:str=None, render:str="vscode", show:bool=True, **kwargs):
         self.define_layout(**kwargs)
 
@@ -181,6 +183,7 @@ class vPlot:
         if show == True:
             self.fig.show(renderer=render)
 
+    # Plot density of states next to band structure with shared y-axis
     def plot_bsdos(self, sup_error=False, **kwargs):
         if 'bands' not in self.traces or 'dos' not in self.traces or len(self.traces) != 2:
             if sup_error == False: raise ValueError("Add only density of states and band structure!")
@@ -201,6 +204,7 @@ class vPlot:
 
         return True
 
+    # Plot density of states
     def plot_dos(self, sup_error=False, **kwargs):
         if 'dos' not in self.traces or len(self.traces) != 1:
             if sup_error == False: raise ValueError("Add only density of states!")
@@ -218,6 +222,7 @@ class vPlot:
 
         return True
     
+    # Plot band structure
     def plot_bands(self, sup_error=False, **kwargs):
         if 'bands' not in self.traces or len(self.traces) != 1:
             if sup_error == False: raise ValueError("Add only band structure!")
@@ -234,6 +239,7 @@ class vPlot:
 
         return True
     
+    # Plot one type of data without specific adjustments
     def plot_single(self, sup_error=False, **kwargs):
         if len(self.traces) != 1:
             if sup_error == False: raise ValueError("Make sure only one type of data is added!")
@@ -245,7 +251,7 @@ class vPlot:
 
         return True
 
-
+    # Plot multiple sets of different data
     def plot_multiple(self, sup_error=False, custom_titles:tuple=None, **kwargs):
         if len(self.traces) == 0:
             if sup_error == False: raise ValueError("Add at least some data!")
@@ -264,6 +270,49 @@ class vPlot:
         self._finish_plot(**kwargs)
 
         return True
+    
+    ########################################
+    # Define Layout
+    ########################################
+    
+    def define_layout(self, title:str='Title',
+                              margins:dict={'l': 50, 'r': 20, 'b': 50, 't': 50, 'pad':5},
+                              font_size:int=12,
+                              font_family:str='Courier New, monospace',
+                              font_color:str='rgba(60, 60, 60, 1)',
+                              color_background:str='rgba(245, 245, 245, 1)',
+                              color_gridlines:str='rgba(220, 220, 220, 1)',
+                              color_grid:str='rgba(0, 0, 0, 0)',
+                              width_line:int=1.5,
+                              ylim:list=None,
+                              xlim:list=None,
+                              **kwargs):
+        
+        margins['t'] = 60 + font_size
+        layout = go.Layout(
+            autosize=True,
+            width=self.w,
+            height=self.h,
+            margin=margins,
+            paper_bgcolor=color_background,
+            title=dict(text=title, yanchor='top', y=1, xanchor='center', x=0.5, pad={'t': 15}),
+            titlefont=dict(family=font_family, size=font_size*2, color=font_color),
+            font=dict(family=font_family, size=font_size, color=font_color),
+            legend=dict(yanchor="top",y=0.99,xanchor="left",x=0.01, tracegroupgap=5),
+            plot_bgcolor=color_grid,**kwargs)
+        self.fig.update_layout(layout)
+
+        if '2D' in self._hidden_vars:
+            self.fig.update_xaxes(dict(gridcolor=color_gridlines, zerolinecolor=color_gridlines, gridwidth=width_line, zerolinewidth=2*width_line),
+                                  range=xlim)
+            self.fig.update_yaxes(dict(gridcolor=color_gridlines, zerolinecolor=color_gridlines, gridwidth=width_line, zerolinewidth=2*width_line),
+                                  range=ylim)
+        if '3D' in self._hidden_vars:
+            self.fig.update_scenes(dict(
+                xaxis=dict(backgroundcolor=color_grid, gridcolor=color_gridlines, zerolinecolor=color_gridlines, gridwidth=width_line, zerolinewidth=2*width_line, showline=True, nticks=5),
+                yaxis=dict(backgroundcolor=color_grid, gridcolor=color_gridlines, zerolinecolor=color_gridlines, gridwidth=width_line, zerolinewidth=2*width_line, showline=True, nticks=5),
+                zaxis=dict(backgroundcolor=color_grid, gridcolor=color_gridlines, zerolinecolor=color_gridlines, gridwidth=width_line, zerolinewidth=2*width_line, showline=True, nticks=5)))
+
 
     ########################################
     # Static Methods
