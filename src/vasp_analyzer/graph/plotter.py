@@ -160,6 +160,112 @@ class vPlot:
         self.traces[Type].append(trace)
 
     ########################################
+    # Plotting Methods
+    ########################################
+
+    def plot(self, **kwargs):
+        if self.plot_bands(sup_error=True, **kwargs) or self.plot_dos(sup_error=True, **kwargs) or self.plot_bsdos(sup_error=True, **kwargs) or self.plot_single(sup_error=True, **kwargs) or self.plot_multiple(sup_error=True, **kwargs):
+            pass
+        else:
+            raise RuntimeError("Automatic plotting failed!")
+
+    def _finish_plot(self, filename:str=None, render:str="vscode", show:bool=True, **kwargs):
+        self.define_layout(**kwargs)
+
+        if filename:
+            if "html" in filename:
+                self.fig.write_html(filename)
+            else:
+                self.fig.write_image(filename)
+        
+        if show == True:
+            self.fig.show(renderer=render)
+
+    def plot_bsdos(self, sup_error=False, **kwargs):
+        if 'bands' not in self.traces or 'dos' not in self.traces or len(self.traces) != 2:
+            if sup_error == False: raise ValueError("Add only density of states and band structure!")
+            else: return False
+
+        self.fig.set_subplots(1,2, column_widths=[0.7, 0.3], subplot_titles=('Band Structure',  'Density of States'), shared_yaxes=True)
+        self.fig.add_traces(self.traces['bands'], rows=1, cols=1)
+        spacer1 = go.Scatter(x=[1,2,3], y=[1,2,3], visible='legendonly', mode='lines', name=' ', line=dict(color='rgba(5,5,5,0)'), legendgroup='spacer1')
+        self.fig.add_trace(spacer1, row=1, col=1)
+        self.fig.add_traces(self.traces['dos'], rows=1, cols=2)
+        self.fig.update_xaxes(showgrid=False)
+
+        self.fig['layout']['yaxis']['title']['text'] = 'E - Ef / eV'
+        self.fig['layout']['xaxis']['title']['text'] = 'k Vector'
+        self.fig['layout']['xaxis2']['title']['text'] = 'States / eV'
+
+        self._finish_plot(**kwargs)
+
+        return True
+
+    def plot_dos(self, sup_error=False, **kwargs):
+        if 'dos' not in self.traces or len(self.traces) != 1:
+            if sup_error == False: raise ValueError("Add only density of states!")
+            else: return False
+        
+        self.fig.set_subplots(1,1, subplot_titles=('Density of States',))
+        self.fig.add_traces(self.traces['dos'], rows=1, cols=1)
+        self.fig.update_xaxes(showgrid=False)
+        
+
+        self.fig['layout']['yaxis']['title']['text'] = 'E - Ef / eV'
+        self.fig['layout']['xaxis']['title'] = 'States / eV'
+
+        self._finish_plot(**kwargs)
+
+        return True
+    
+    def plot_bands(self, sup_error=False, **kwargs):
+        if 'bands' not in self.traces or len(self.traces) != 1:
+            if sup_error == False: raise ValueError("Add only band structure!")
+            else: return False
+
+        self.fig.set_subplots(1,1, subplot_titles=('Band Structure',))
+        self.fig.add_traces(self.traces['bands'], rows=1, cols=1)
+        self.fig.update_xaxes(showgrid=False)
+
+        self.fig['layout']['yaxis']['title']['text'] = 'E - Ef / eV'
+        self.fig['layout']['xaxis']['title'] = 'k Vector'
+
+        self._finish_plot(**kwargs)
+
+        return True
+    
+    def plot_single(self, sup_error=False, **kwargs):
+        if len(self.traces) != 1:
+            if sup_error == False: raise ValueError("Make sure only one type of data is added!")
+            else: return False
+        
+        self.fig.add_traces(*self.traces.values())
+
+        self._finish_plot(**kwargs)
+
+        return True
+
+
+    def plot_multiple(self, sup_error=False, custom_titles:tuple=None, **kwargs):
+        if len(self.traces) == 0:
+            if sup_error == False: raise ValueError("Add at least some data!")
+            else: return False
+
+        sums = len(self.traces)
+        i = 0
+
+        self.fig.set_subplots((sums//2) + (sums%2>0), 2, subplot_titles=custom_titles, vertical_spacing=0.18)
+
+        for key, value in self.traces.items():
+            row = (i // 2) + 1
+            col = (i % 2) + 1 
+            self.fig.add_traces(value, rows=row, cols=col)
+            i += 1
+        self._finish_plot(**kwargs)
+
+        return True
+
+    ########################################
     # Static Methods
     ########################################
 
