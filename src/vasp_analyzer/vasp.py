@@ -19,17 +19,16 @@ Main VASP handler
 '''
 
 class VASP:
-    def __init__(self, filepath=None, empty:bool=False):
+    def __init__(self, filepath=None):
         """
         Main class which contains other classes and provides a simplified interface to access functions
         Args:
             filepath: can add filepath upon object creation (also possible later on)
-            empty: whether to set up a completely empty object (only meant for dev/testing purposes)
         """
         if filepath is not None: self.add_filepath(filepath) 
         else: self.files = None
 
-        if empty == False: self.reset()
+        self.reset()
 
         self.plotter = None
 
