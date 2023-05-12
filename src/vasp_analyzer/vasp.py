@@ -5,6 +5,8 @@ from .data.incar import INCAR
 from .data.kpoints import KPOINTS
 from .data.dos import DOSC
 
+from .graph.plotter import vPlot
+
 '''
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
@@ -28,6 +30,8 @@ class VASP:
         else: self.files = None
 
         if empty == False: self.reset()
+
+        self.plotter = None
 
         # Properties
         self.efermi = None
@@ -130,6 +134,16 @@ class VASP:
     
     def get_plotter(self):
         pass
+
+    ########################################
+    # Plot Methods
+    ########################################
+
+    def get_plotter(self, size=None, width=None, height=None):
+        return vPlot(size=size, width=width, height=height)
+    
+    def set_plotter(self, size=None, width=None, height=None):
+        self.plotter = vPlot(size=size, width=width, height=height)
 
     ########################################
     # Loading Methods
