@@ -13,7 +13,7 @@ VASP Plotter
 --------------------------------------------------------------------------------
 '''
 
-class vPlot:
+class vplotter:
     def __init__(self, size=None, width=None, height=None):
         """
         Plotly plotter object to facilitate plotting 3D interactive graphs. Includes helper functions to draw hexagonal brillouin zone, create surface and scatter plots and more. Relies on the offline module to prevent sending data to external cloud servers
