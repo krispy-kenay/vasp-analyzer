@@ -29,7 +29,6 @@ class VASP:
         else: self.files = None
 
         self.reset()
-
         self.plotter = None
 
         # Properties
@@ -68,10 +67,11 @@ class VASP:
     
     # !CAREFUL! Resets all subclasses, which empties all previously stored content
     def reset(self):
+        kp = KPOINTS()
         self.classes = {'incar': INCAR(),
-                        'kpoints': KPOINTS(),
+                        'kpoints': kp,
                         'dos': DOSC(),
-                        'projections': 0}
+                        'projections': kp}
         
         self.triggers = {k: False for k in self.classes}
 
@@ -152,7 +152,6 @@ class VASP:
         self.load(incar=True, dos=True, kpoints=True, projections=True)
     
     def load(self, **kwargs):
-        
         keys = []
         for key, value in kwargs.items():
             if key in self.classes and value == True:
