@@ -158,6 +158,77 @@ class vplotter:
         
         # add trace to the figure
         self.traces[Type].append(trace)
+    
+    def add_contour_weight(self, data:tuple,
+                           Type:str='contour',
+                           density:int=200,
+                           method:str='linear',
+                           color_scale:str=None,
+                           coloring_method:str=None,
+                           zrange:tuple=None,
+                           zind:int=None,
+                           line_density:int=22,
+                           line_width:float=0.25):
+
+        # Check data type and unpack into separate values
+        if type(data) != tuple: raise ValueError("Provide data as a tuple of format (x, y, z, weight)")
+        x, y, z, weight = data
+
+        # Setup traces if not present
+        if Type not in self.traces: self.traces[Type] = []
+
+        # Add 2D tag
+        self._hidden_vars.append('2D')
+        
+        # max, min and midpoints can be manually added (e.g. if scales should be the same between many different plots), if not then it inputs the default arguments
+        if zrange is None: zrange = (min(weight), 0, max(weight))
+
+        # Checks for custom colorscale, if none is provided it will automatically select a colorscale depending on the type of data
+        if min(weight) >= 0: 
+            if color_scale is None: color_scale = 'inferno'
+            clx = -0.05
+            algn = 'right'
+        else: 
+            if color_scale is None: color_scale = ['rgb(142, 181, 194)', 'rgb(69, 144, 185)', 'rgb(11, 102, 189)', 'rgb(41, 58, 143)', 'rgb(23, 28, 66)', 'rgb(23, 23, 23)', 'rgb(60, 9, 17)', 'rgb(120, 14, 40)', 'rgb(172, 43, 36)', 'rgb(196, 101, 72)', 'rgb(213, 157, 137)']
+            clx = 1.02
+            algn = 'left'
+        
+        # find unique z values to create grid
+        z_list = np.unique(z)
+
+        # handle input for multiple z-values
+        if len(z_list) > 1 and zind is None:
+            i = 0
+            for zval in z_list:
+                if i == 0: vis = True
+                else: vis = False
+                xi, yi, zi, wi = x[z == zval], y[z == zval], z[z == zval], weight[z == zval]
+                xx, yy, zz = self.interpol_surface(xi, yi, zi, wi, density=density, method=method)
+                trace = go.Contour(visible=vis, x=xx, y=yy, z=zz, colorscale=color_scale, zmin=zrange[0], zmid=zrange[1], zmax=zrange[2],contours_coloring=coloring_method, line_smoothing = 1.3, ncontours=line_density,
+                                line=dict(width=line_width), colorbar=dict(x=clx, xanchor=algn))
+                self.traces[Type].append(trace)
+                i += 1
+
+            steps = []
+            for i in range(len(self.traces[Type])):
+                step = dict(method='update', args=[{'visible': [False]*len(self.traces[Type])}], label=str(z_list[i]))
+                step["args"][0]["visible"][i] = True
+                steps.append(step)
+        
+            sliders = [dict(active=0, currentvalue={"prefix": "z = "}, pad={"t": 50}, steps=steps)]
+            self.fig.update_layout(sliders=sliders)
+        # handle input for only one z-value, either because of the input data or because the user wishes to only display one
+        else:
+            z_list = np.unique(z)
+            if zind is None:
+                zval = z_list[0]
+            else:
+                zval = np.unique(z)[zind]
+            xi, yi, zi, wi = x[z == zval], y[z == zval], z[z == zval], weight[z == zval]
+            xx, yy, zz = self.interpol_surface(xi, yi, zi, wi, density=density, method=method)
+            trace = go.Contour(visible=True, x=xx, y=yy, z=zz, colorscale=color_scale, zmin=zrange[0], zmid=zrange[1], zmax=zrange[2],contours_coloring=coloring_method, line_smoothing = 1.3, ncontours=line_density,
+                                line=dict(width=line_width))
+            self.traces[Type].append(trace)
 
     ########################################
     # Plotting Methods
@@ -319,7 +390,7 @@ class vplotter:
     ########################################
 
     @staticmethod
-    def interpolate_surface(xi, yi, wi, density:int=500, method:str='linear'):
+    def interpolate_surface(xi, yi, wi, density:int=200, method:str='linear'):
 
         xxi = np.linspace(min(xi), max(xi), density)
         yyi = np.linspace(min(yi), max(yi), density)
