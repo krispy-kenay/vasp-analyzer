@@ -84,37 +84,7 @@ class VASP:
         self.load(dos=True)
         return self.dos.efermi
     
-
-    # For Kpoints
-    def get_band_structure(self):
-        self.load(kpoints=True)
-        return self.kpoints.get_band_structure()
-    
-    def get_band_structure_matched(self):
-        self.load(kpoints=True, projections=True)
-        return self.kpoints.get_sorted_hun_bands()
-    
-    def get_spin_delta_occ(self, cutoff=1e-3, absolute=False):
-        self.load(kpoints=True)
-        return self.kpoints.get_spin_difference_hl(mode='occupied', cutoff=cutoff, absolute=absolute)
-    
-    def get_spin_delta_tot(self, cutoff=1e-3, absolute=False):
-        self.load(kpoints=True)
-        return self.kpoints.get_spin_difference_hl(mode='total', cutoff=cutoff, absolute=absolute)
-
-    def get_spin_delta_hob(self):
-        self.load(kpoints=True)
-        return self.kpoints.get_spin_difference_hl(mode='highest')
-    
-    def get_spin_delta_lub(self):
-        self.load(kpoints=True)
-        return self.kpoints.get_spin_difference_hl(mode='lowest')
-    
-    def get_spin_delta_hun(self, absolute=False):
-        self.load(kpoints=True, incar=True, projections=True)
-        return self.kpoints.get_spin_difference_hl(mode='occupied_hungarian', moment=np.array(self.incar['MAGMOM']), absolute=absolute)
-
-    # For DOS
+    # Density of states
     def get_dos_total(self):
         self.load(dos=True)
         return (self.dos.get_energy(), self.dos.get_tdos())
@@ -130,6 +100,41 @@ class VASP:
     def get_dos_orbital_element(self):
         self.load(dos=True)
         return (self.dos.get_energy(), self.dos.calc_dos('element spd'))
+
+    # Band structure
+    def get_band_structure(self):
+        self.load(kpoints=True)
+        return self.kpoints.get_band_structure()
+    
+    def get_band_structure_matched(self):
+        self.load(kpoints=True, projections=True)
+        return self.kpoints.get_sorted_hun_bands()
+    
+    # Splitting
+    def get_splitting_normal_occupied(self, cutoff=1e-3, absolute=False):
+        self.load(kpoints=True)
+        return self.kpoints.get_spin_difference_hl(mode='occupied', cutoff=cutoff, absolute=absolute)
+    
+    def get_splitting_normal_total(self, cutoff=1e-3, absolute=False):
+        self.load(kpoints=True)
+        return self.kpoints.get_spin_difference_hl(mode='total', cutoff=cutoff, absolute=absolute)
+
+    def get_splitting_normal_hob(self):
+        self.load(kpoints=True)
+        return self.kpoints.get_spin_difference_hl(mode='highest')
+    
+    def get_splitting_normal_lub(self):
+        self.load(kpoints=True)
+        return self.kpoints.get_spin_difference_hl(mode='lowest')
+    
+    def get_splitting_hungarian_occupied(self, absolute=False):
+        self.load(kpoints=True, incar=True, projections=True)
+        return self.kpoints.get_spin_difference_hl(mode='occupied_hungarian', moment=np.array(self.incar['MAGMOM']), absolute=absolute)
+
+    def get_splitting_hungarian_total(self, absolute=False):
+        pass
+
+
     
     def get_plotter(self):
         pass
