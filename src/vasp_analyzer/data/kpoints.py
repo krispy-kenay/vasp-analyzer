@@ -140,12 +140,16 @@ class KPOINT:
         return diffg
     
     # More complex calculation of up spin energies - down spin energies based on matching pairs of orbital characters (using the hungarian algorithm)
-    def calc_hun_sort_diff(self, moment, cutoff=2, absolute=False):
+    def calc_hun_sort_diff(self, moment, occupied=True, cutoff=2, absolute=False):
         if self.spin_up is None or self.spin_down is None or self.spin_up_site is None or self.spin_down_site is None:
             raise ValueError("Either spin up, spin down or site projection information is missing! \n Make sure that you have set LORBIT = 2 and LSORBIT = True")
 
-        spin_up_filtered = self.spin_up[self.spin_up[:, 1] == 1]
-        spin_down_filtered = self.spin_down[self.spin_down[:, 1] == 1]
+        if occupied == True:
+            spin_up_filtered = self.spin_up[self.spin_up[:, 1] == 1]
+            spin_down_filtered = self.spin_down[self.spin_down[:, 1] == 1]
+        else:
+            spin_up_filtered = self.spin_up
+            spin_down_filtered = self.spin_down
         num_up = len(spin_up_filtered)
         num_down = len(spin_down_filtered)
 
@@ -291,29 +295,42 @@ class KPOINTS:
         kpoints[0] = 0
         return np.arange(len(self.data)), kpoints, bs_up.T, bs_down.T
 
-    # Calculates difference between up spin energy and down spin energy (in different variations). 
-    def get_spin_difference_hl(self, mode, cutoff=1e-3, moment=None):
+    # Difference between highest occupied spin up and down energy
+    def get_splitting_normal_highest(self):
         length = len(self.data)
-        if mode == 'highest':
-            diff = [value.get_hob()[0] - value.get_hob()[1] for value in self.data.values()]
-        elif mode == 'lowest':
-            diff = [value.get_lub()[0] - value.get_lub()[1] for value in self.data.values()]
-        elif mode == 'occupied':
-            diff = [value.calc_spin_diff(occupied=True, cutoff=cutoff) for value in self.data.values()]
-        elif mode == 'total':
-            diff = [value.calc_spin_diff(occupied=False, cutoff=cutoff) for value in self.data.values()]
-        elif mode == 'occupied_hungarian':
-            if moment is not None:
-                diff = [value.calc_hun_sort_diff(moment=moment) for value in self.data.values()]
-            else:
-                raise ValueError("include a valid moment!")
-        else:
-            raise ValueError("provide a valid mode!")
+        diff = [value.get_hob()[0] - value.get_hob()[1] for value in self.data.values()]
         coords = self.get_path()
         diff = np.array(diff).reshape(-1, 1)
         diff = diff / length
         return np.vstack([coords.T, diff.T]).T
+
+    # Difference between lowest unoccupied spin up and down energy
+    def get_splitting_normal_lowest(self):
+        length = len(self.data)
+        diff = [value.get_lub()[0] - value.get_lub()[1] for value in self.data.values()]
+        coords = self.get_path()
+        diff = np.array(diff).reshape(-1, 1)
+        diff = diff / length
+        return np.vstack([coords.T, diff.T]).T
+
+    # Difference between spin up and down energy
+    def get_splitting_normal(self, occupied:bool, absolute:bool, cutoff=1e-3):
+        length = len(self.data)
+        diff = [value.calc_spin_diff(occupied=occupied, cutoff=cutoff, absolute=absolute) for value in self.data.values()]
+        X, Y, Z = self.get_path()
+        diff = np.array(diff)
+        diff = diff / length
+        return (X, Y, Z, diff)
     
+    # Difference between spin up and down energy with hungarian algorithm
+    def get_splitting_hungarian(self, occupied:bool, absolute:bool, moment, cutoff=2):
+        length = len(self.data)
+        diff = [value.calc_hun_sort_diff(occupied=occupied, moment=moment, absolute=absolute, cutoff=cutoff) for value in self.data.values()]
+        X, Y, Z = self.get_path()
+        diff = np.array(diff)
+        diff = diff / length
+        return (X, Y, Z, diff)
+
     ########################################
     # Loading Methods
     ########################################
