@@ -135,11 +135,6 @@ class VASP:
         self.load(kpoints=True, incar=True, projections=True)
         return self.kpoints.get_splitting_hungarian(occupied=False, moment=np.array(self.incar['MAGMOM']), absolute=absolute, cutoff=cutoff)
 
-
-    
-    def get_plotter(self):
-        pass
-
     ########################################
     # Plot Methods
     ########################################
