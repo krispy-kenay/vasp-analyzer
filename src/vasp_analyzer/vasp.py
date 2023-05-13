@@ -111,28 +111,29 @@ class VASP:
         return self.kpoints.get_sorted_hun_bands()
     
     # Splitting
-    def get_splitting_normal_occupied(self, cutoff=1e-3, absolute=False):
+    def get_splitting_normal_occupied(self, absolute=False, cutoff=1e-3):
         self.load(kpoints=True)
-        return self.kpoints.get_spin_difference_hl(mode='occupied', cutoff=cutoff, absolute=absolute)
+        return self.kpoints.get_splitting_normal(occupied=True, cutoff=cutoff, absolute=absolute)
     
-    def get_splitting_normal_total(self, cutoff=1e-3, absolute=False):
+    def get_splitting_normal_total(self, absolute=False, cutoff=1e-3):
         self.load(kpoints=True)
-        return self.kpoints.get_spin_difference_hl(mode='total', cutoff=cutoff, absolute=absolute)
+        return self.kpoints.get_splitting_normal(occupied=False, cutoff=cutoff, absolute=absolute)
 
     def get_splitting_normal_hob(self):
         self.load(kpoints=True)
-        return self.kpoints.get_spin_difference_hl(mode='highest')
+        return self.kpoints.get_splitting_normal_highest()
     
     def get_splitting_normal_lub(self):
         self.load(kpoints=True)
-        return self.kpoints.get_spin_difference_hl(mode='lowest')
+        return self.kpoints.get_splitting_normal_lowest()
     
-    def get_splitting_hungarian_occupied(self, absolute=False):
+    def get_splitting_hungarian_occupied(self, absolute=False, cutoff=2):
         self.load(kpoints=True, incar=True, projections=True)
-        return self.kpoints.get_spin_difference_hl(mode='occupied_hungarian', moment=np.array(self.incar['MAGMOM']), absolute=absolute)
+        return self.kpoints.get_splitting_hungarian(occupied=True, moment=np.array(self.incar['MAGMOM']), absolute=absolute, cutoff=cutoff)
 
-    def get_splitting_hungarian_total(self, absolute=False):
-        pass
+    def get_splitting_hungarian_total(self, absolute=False, cutoff=2):
+        self.load(kpoints=True, incar=True, projections=True)
+        return self.kpoints.get_splitting_hungarian(occupied=False, moment=np.array(self.incar['MAGMOM']), absolute=absolute, cutoff=cutoff)
 
 
     
